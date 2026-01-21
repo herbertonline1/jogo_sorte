@@ -2328,147 +2328,100 @@ input:focus {
         }
     }
 
-// Inicializa o saldo na tela
-updateBalance();
+    // Inicializa o saldo na tela
+    updateBalance();
 
-// ================= CRASH GAME =================
-let crashRunning = false;
-let crashMultiplier = 1.00;
-let crashTimer;
-let crashGraphData = [];
-let crashTrend = 1; // 1 = sobe | -1 = desce
+    // CRASH GAME
+    let crashRunning = false;
+    let crashMultiplier = 1.00;
+    let crashTimer;
 
-function startCrash() {
-    const bet = parseFloat(document.getElementById('bet-amount').value);
-    if (bet > balance) {
-        alert('Saldo insuficiente!');
-        return;
+    function startCrash() {
+        const bet = parseFloat(document.getElementById('bet-amount').value);
+        if (bet > balance) {
+            alert('Saldo insuficiente!');
+            return;
+        }
+        
+        crashRunning = true;
+        crashMultiplier = 1.00;
+        balance -= bet;
+        updateBalance();
+        
+        document.getElementById('btn-crash-start').style.display = 'none';
+        document.getElementById('btn-crash-stop').style.display = 'inline-block';
+        
+        crashTimer = setInterval(() => {
+            crashMultiplier += 0.05 + Math.random() * 0.05;
+            document.getElementById('mult-display').textContent = crashMultiplier.toFixed(2) + 'x';
+            
+            if (Math.random() > 0.95) {
+                crashFail();
+            }
+        }, 100);
     }
 
-    // Inicializa canvas
-    initCrashCanvas();
-
-    crashRunning = true;
-    crashMultiplier = 1.00;
-    crashGraphData = [1.00];
-    crashTrend = 1;
-
-    balance -= bet;
+function addChips(amount) {
+    balance += amount;
     updateBalance();
-
-    document.getElementById('rocket').style.display = 'block';
-    document.getElementById('btn-crash-start').style.display = 'none';
-    document.getElementById('btn-crash-stop').style.display = 'inline-block';
-    document.getElementById('win-display').textContent = '';
-    document.getElementById('mult-display').style.color = 'var(--accent)';
-    document.getElementById('mult-display').textContent = '1.00x';
-
-    crashTimer = setInterval(() => {
-
-        // 🔄 alterna tendência (sobe / desce)
-        if (Math.random() < 0.28) {
-            crashTrend *= -1;
-        }
-
-        // 📈 variação controlada
-        const variation = Math.random() * 0.12 + 0.03;
-
-        if (crashTrend === 1) {
-            crashMultiplier += variation;
-        } else {
-            crashMultiplier -= variation * 0.6;
-        }
-
-        if (crashMultiplier < 1) crashMultiplier = 1;
-
-        crashGraphData.push(crashMultiplier);
-
-        document.getElementById('mult-display').textContent =
-            crashMultiplier.toFixed(2) + 'x';
-
-        drawCrashGraph();
-
-        // 💥 chance de crash progressiva (igual ao seu estilo)
-        const crashChance = Math.min(0.025 + (crashMultiplier * 0.007), 0.15);
-        if (Math.random() < crashChance) {
-            crashFail();
-        }
-
-    }, 100);
+    alert(`✅ +R$ ${amount} adicionados! Seu saldo agora é R$ ${balance.toFixed(2)}`);
 }
 
-function stopCrash() {
-    if (!crashRunning) return;
-
-    clearInterval(crashTimer);
-    crashRunning = false;
-
-    const bet = parseFloat(document.getElementById('bet-amount').value);
-    const winnings = bet * crashMultiplier;
-
-    balance += winnings;
-    updateBalance();
-
-    document.getElementById('mult-display').style.color = '#00ff88';
-    document.getElementById('win-display').textContent =
-        `Ganhou: R$ ${winnings.toFixed(2)}`;
-    document.getElementById('rocket').style.display = 'none';
-
-    setTimeout(resetCrashUI, 3000);
+function updateBalance() {
+    document.getElementById('balance').textContent = balance.toFixed(2);
 }
 
-function crashFail() {
-    clearInterval(crashTimer);
-    crashRunning = false;
-
-    document.getElementById('mult-display').style.color = '#ff3333';
-    document.getElementById('mult-display').textContent = '💥 CRASH!';
-    document.getElementById('win-display').textContent = 'Perdeu a aposta!';
-    document.getElementById('rocket').style.display = 'none';
-
-    setTimeout(resetCrashUI, 3000);
+function openGame(game) {
+    const modal = document.getElementById(`modal-${game}`);
+    if (modal) {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+        if (game === 'bingo') generateBingoGrid();
+        if (game === 'keno') generateKenoGrid();
+    }
 }
 
-function resetCrashUI() {
-    document.getElementById('btn-crash-start').style.display = 'inline-block';
-    document.getElementById('btn-crash-stop').style.display = 'none';
-    document.getElementById('mult-display').style.color = 'var(--accent)';
-    document.getElementById('mult-display').textContent = '1.00x';
-    document.getElementById('win-display').textContent = '';
-    crashGraphData = [];
+function closeGame(game) {
+    const modal = document.getElementById(`modal-${game}`);
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
 }
 
-// ================= GRÁFICO E FOGUETE =================
 
+let crashGraphData = [];
 let crashCanvas, crashCtx;
 
 function initCrashCanvas() {
     crashCanvas = document.getElementById('crashCanvas');
     if (!crashCanvas) return;
-
+    
     crashCtx = crashCanvas.getContext('2d');
     const container = document.getElementById('crashWin');
     crashCanvas.width = container.offsetWidth;
     crashCanvas.height = container.offsetHeight;
-
+    
     drawCrashGraph();
 }
 
 function drawCrashGraph() {
     if (!crashCtx) return;
-
+    
     const width = crashCanvas.width;
     const height = crashCanvas.height;
     const padding = 40;
     const graphWidth = width - padding * 2;
     const graphHeight = height - padding * 2;
-
+    
+    // Limpa canvas
     crashCtx.fillStyle = 'rgba(10, 14, 39, 0.9)';
     crashCtx.fillRect(0, 0, width, height);
-
+    
+    // Grid
     crashCtx.strokeStyle = 'rgba(0, 212, 255, 0.1)';
     crashCtx.lineWidth = 1;
-
     for (let i = 0; i <= 5; i++) {
         const y = padding + (graphHeight / 5) * i;
         crashCtx.beginPath();
@@ -2476,7 +2429,6 @@ function drawCrashGraph() {
         crashCtx.lineTo(width - padding, y);
         crashCtx.stroke();
     }
-
     for (let i = 0; i <= 10; i++) {
         const x = padding + (graphWidth / 10) * i;
         crashCtx.beginPath();
@@ -2484,7 +2436,26 @@ function drawCrashGraph() {
         crashCtx.lineTo(x, height - padding);
         crashCtx.stroke();
     }
-
+    
+    // Eixos
+    crashCtx.strokeStyle = 'rgba(0, 212, 255, 0.5)';
+    crashCtx.lineWidth = 2;
+    crashCtx.beginPath();
+    crashCtx.moveTo(padding, height - padding);
+    crashCtx.lineTo(width - padding, height - padding);
+    crashCtx.stroke();
+    crashCtx.beginPath();
+    crashCtx.moveTo(padding, padding);
+    crashCtx.lineTo(padding, height - padding);
+    crashCtx.stroke();
+    
+    // Labels
+    crashCtx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    crashCtx.font = '12px Inter';
+    crashCtx.textAlign = 'center';
+    crashCtx.fillText('Tempo', width / 2, height - 10);
+    
+    // Desenha linha do gráfico
     if (crashGraphData.length > 0) {
         drawCrashLine(padding, height - padding, graphWidth, graphHeight);
         updateRocketPosition(padding, height - padding, graphWidth, graphHeight);
@@ -2492,42 +2463,149 @@ function drawCrashGraph() {
 }
 
 function drawCrashLine(startX, baseY, graphWidth, graphHeight) {
+    if (crashGraphData.length < 1) return;
+    
     const maxMult = Math.max(...crashGraphData, 10);
     const minMult = 1;
     const range = maxMult - minMult;
-
+    
+    // Desenha a linha
     crashCtx.strokeStyle = 'rgba(0, 212, 255, 0.8)';
     crashCtx.lineWidth = 3;
     crashCtx.beginPath();
-
+    
     crashGraphData.forEach((value, index) => {
-        const progressX = Math.min((index / 50) * graphWidth, graphWidth);
-        const x = startX + progressX;
+        const maxProgress = Math.min((index / 50) * graphWidth, graphWidth);
+        const x = startX + maxProgress;
         const y = baseY - ((value - minMult) / range) * graphHeight;
-
-        index === 0 ? crashCtx.moveTo(x, y) : crashCtx.lineTo(x, y);
+        
+        if (index === 0) {
+            crashCtx.moveTo(x, y);
+        } else {
+            crashCtx.lineTo(x, y);
+        }
     });
-
+    
     crashCtx.stroke();
+    
+    // Preenchimento
+    const lastIndex = crashGraphData.length - 1;
+    const lastProgressX = Math.min((lastIndex / 50) * graphWidth, graphWidth);
+    const lastX = startX + lastProgressX;
+    
+    crashCtx.lineTo(lastX, baseY);
+    crashCtx.lineTo(startX, baseY);
+    crashCtx.fillStyle = 'rgba(0, 212, 255, 0.1)';
+    crashCtx.fill();
 }
 
 function updateRocketPosition(startX, baseY, graphWidth, graphHeight) {
+    if (crashGraphData.length < 1) return;
+    
     const maxMult = Math.max(...crashGraphData, 10);
     const minMult = 1;
     const range = maxMult - minMult;
-
+    
     const lastIndex = crashGraphData.length - 1;
-    const progressX = Math.min((lastIndex / 50) * graphWidth, graphWidth);
-    const graphX = startX + progressX;
+    const lastProgressX = Math.min((lastIndex / 50) * graphWidth, graphWidth);
+    const graphX = startX + lastProgressX;
     const graphY = baseY - ((crashGraphData[lastIndex] - minMult) / range) * graphHeight;
-
-    const canvasRect = crashCanvas.getBoundingClientRect();
-
+    
+    // Obtém o retângulo do canvas
+    const canvas = document.getElementById('crashCanvas');
+    const canvasRect = canvas.getBoundingClientRect();
+    
+    // Calcula a posição absoluta na tela
+    const absoluteX = canvasRect.left + graphX - 20;
+    const absoluteY = canvasRect.top + graphY - 30;
+    
     const rocket = document.getElementById('rocket');
-    rocket.style.left = (canvasRect.left + graphX - 20) + 'px';
-    rocket.style.top = (canvasRect.top + graphY - 30) + 'px';
+    rocket.style.left = absoluteX + 'px';
+    rocket.style.top = absoluteY + 'px';
 }
 
+function startCrash() {
+    const bet = parseFloat(document.getElementById('bet-amount').value);
+    if (bet > balance) {
+        alert('Saldo insuficiente!');
+        return;
+    }
+    
+    // Inicializa canvas
+    initCrashCanvas();
+    
+    crashRunning = true;
+    crashMultiplier = 1.00;
+    crashGraphData = [1.00];
+    balance -= bet;
+    updateBalance();
+    
+    // Mostra o foguete
+    document.getElementById('rocket').style.display = 'block';
+    
+    document.getElementById('btn-crash-start').style.display = 'none';
+    document.getElementById('btn-crash-stop').style.display = 'inline-block';
+    
+    crashTimer = setInterval(() => {
+        crashMultiplier += 0.08 + Math.random() * 0.12;
+        crashGraphData.push(crashMultiplier);
+        document.getElementById('mult-display').textContent = crashMultiplier.toFixed(2) + 'x';
+        
+        // Desenha o gráfico
+        drawCrashGraph();
+        
+        // Chance de crash
+        const crashChance = Math.min(0.03 + (crashMultiplier * 0.008), 0.15);
+        if (Math.random() < crashChance) {
+            crashFail();
+        }
+    }, 100);
+}
+
+function stopCrash() {
+    if (!crashRunning) return;
+    
+    clearInterval(crashTimer);
+    crashRunning = false;
+    
+    const bet = parseFloat(document.getElementById('bet-amount').value);
+    const winnings = bet * crashMultiplier;
+    
+    balance += winnings;
+    updateBalance();
+    
+    document.getElementById('mult-display').style.color = '#00ff88';
+    document.getElementById('win-display').textContent = `Ganhou: R$ ${winnings.toFixed(2)}`;
+    document.getElementById('rocket').style.display = 'none';
+    
+    setTimeout(() => {
+        document.getElementById('btn-crash-start').style.display = 'inline-block';
+        document.getElementById('btn-crash-stop').style.display = 'none';
+        document.getElementById('mult-display').style.color = 'var(--accent)';
+        document.getElementById('mult-display').textContent = '1.00x';
+        document.getElementById('win-display').textContent = '';
+        crashGraphData = [];
+    }, 3000);
+}
+
+function crashFail() {
+    clearInterval(crashTimer);
+    crashRunning = false;
+    
+    document.getElementById('mult-display').style.color = '#ff3333';
+    document.getElementById('mult-display').textContent = '💥 CRASH!';
+    document.getElementById('win-display').textContent = 'Perdeu a aposta!';
+    document.getElementById('rocket').style.display = 'none';
+    
+    setTimeout(() => {
+        document.getElementById('btn-crash-start').style.display = 'inline-block';
+        document.getElementById('btn-crash-stop').style.display = 'none';
+        document.getElementById('mult-display').style.color = 'var(--accent)';
+        document.getElementById('mult-display').textContent = '1.00x';
+        document.getElementById('win-display').textContent = '';
+        crashGraphData = [];
+    }, 3000);
+}
 
 // ROULETTE
 function spinRoulette() {
